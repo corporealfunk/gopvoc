@@ -13,7 +13,43 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 * gopvoc pitch shifting can only take a multiplier scale factor for pitch (octave lower is scale factor of 0.5, octave higher is 2.0, etc).
 * gopvoc time stretching can only take a multiplier scale factor for time instead of a target output duration.
 
-# Commands
+# Commands and Options
+
+## Flags and Options
+
+Both time stretching and pitch shifting use the following common set of flags:
+
+Input AIFF file path (required):
+
+`-i <path to input file>`
+
+Output AIFF file path (required):
+
+`-f <path to input file>`
+
+Number of requested bands for FFT processing (must be one of: 8, 16, 32, 64, 128, 512, 1024, 2048, 4096):
+
+`-b <number of bands>`
+
+Overlap factor (must be one of 0.5, 1, 2, 4):
+
+`-o <overlap>`
+
+Scale factor (for time stretching, the amount to mutliply input duration by. For pitch shifting, the pitch shift multiplier):
+
+`-s <scale factor>`
+
+Windowing function for FFT processing (must be one of: rectangle, hamming, vonhann, kaiser, sinc, triangle, ramp):
+
+`-w <window function name>`
+
+Quiet flag (suppress stdout information and progress bar):
+
+`-q`
+
+Time stretching can do phase locking during resynthesis, to enable it:
+
+`-p`
 
 ## Time Stretching
 
@@ -23,7 +59,7 @@ For a list of flags relevant to time stretching:
 
 `./gopvoc time -h`
 
-Note that the original SoundHack could crash given certain program states based on extreme stretching multipliers. The maximum or minimum allowed `-s` scale multiplier is dependent on the FFT window size which in turn is dependent on the number of FFT bands requested by the `-b` flag. Unlike SoundHack, gopvoc will cap the multiplier within this limit instead of crashing due to a division by zero. Program output will indicate if your requested `-s <scale multiplier>` flag has been limited.
+Note that the original SoundHack could crash given certain program states based on extreme stretching multipliers. The maximum or minimum allowed `-s` scale multiplier is dependent on the FFT window size which in turn is dependent on the number of FFT bands requested by the `-b` flag. Unlike SoundHack, gopvoc will cap the multiplier within this limit instead of crashing due to a division by zero. Program output will indicate of your requested `-s <scale multiplier>` flag has been limited.
 
 Example:
 
@@ -31,7 +67,7 @@ Example:
 
 The above example takes `strings.aif`, and stretches it to be 10 times the original length using 4096 FFT bands with an overlap factor of 4, using a kaiser windowing function
 
-## Pitch Shifiting
+## Pitch Shifting
 
 Pitch shifting is acheived via windowed FFT analysis of the input file, then resynthesis into the output file via [oscillator bank resynthesis](https://en.wikipedia.org/wiki/Additive_synthesis#Oscillator_bank_synthesis).
 
@@ -52,4 +88,4 @@ The above example takes `strings.aif`, and pitch shifts it down one octave (0.5 
 * run `go build -o gopvoc`
 * you should now have an executable `./gopvoc` in the current directory or `./gopvoc.exe` on Windows.
 
-The code has only been built and tested on Mac OS X Intel machines.
+Binaries have been cross-compiled for OS X amd64 (Intel), arm64 (M1) as well as Linux (amd64) and Windows (amd64).
