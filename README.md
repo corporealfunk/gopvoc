@@ -25,9 +25,9 @@ Input AIFF file path (required):
 
 Output AIFF file path (required):
 
-`-f <path to input file>`
+`-f <path to output file>`
 
-Number of requested bands for FFT processing (must be one of: 8, 16, 32, 64, 128, 512, 1024, 2048, 4096):
+Number of requested bands for FFT processing (must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096):
 
 `-b <number of bands>`
 
