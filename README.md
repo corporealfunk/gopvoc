@@ -12,6 +12,8 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 * gopvoc can only read and write AIFF files.
 * gopvoc pitch shifting can only take a multiplier scale factor for pitch (octave lower is scale factor of 0.5, octave higher is 2.0, etc).
 * gopvoc time stretching can only take a multiplier scale factor for time instead of a target output duration.
+* gopvoc does not allow a scaling function, it only accepts a signal value for scale factor.
+* gopvoc does not currently implement resynthesis gating.
 
 # Commands and Options
 
