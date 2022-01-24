@@ -132,65 +132,52 @@ func computeTimeScaleData(windowSize int, scaleFactor float64) timeScalingData {
   var decimation int
   var interpolation int
 
-  percentError := 2.0
-  rateLimited := false
+  minPercentError := -1.0
+  bestInterpolation := 0
+  bestDecimation := 0
+  newScaleFactor := 1.0
 
-  /*
-  * starting from the max interpolation rate, keep subtracting one
-  * and then calculate what the decimation rate is based on the desired
-  * scale. If the ratio between the two is within 1% of our desired scale,
-  * then we're done, use that. If we get down to a point where interpolation
-  * is === 1, then just set it back to maxRate and do a straight calculation
-  * of decimation (ie: we couldn't find an interpolation rate that resulted
-  * in the decimation rate being within 1% of desired)
-  */
   if scaleFactor > 1.0 {
-    for interpolation = maxRate; percentError > 1.01; interpolation-- {
+    for interpolation = maxRate; interpolation > 0; interpolation-- {
       decimation = int(math.Floor(float64(interpolation) / scaleFactor))
 
-      // Soundhack doesn't protect against divide by zero and actually crashes in
-      // some cases, let's protect divide by zero:
       if decimation == 0 {
         decimation = 1
       }
 
       tempScaleFactor := float64(interpolation) / float64(decimation)
+
+      var percentError float64
+
       if tempScaleFactor > scaleFactor {
         percentError = tempScaleFactor / scaleFactor
       } else {
         percentError = scaleFactor / tempScaleFactor
       }
 
-      if (percentError < 1.004) {
-        break
-      }
+      if minPercentError < 0.0 || percentError < minPercentError {
+        minPercentError = percentError
+        bestDecimation = decimation
+        bestInterpolation = interpolation
+        newScaleFactor = tempScaleFactor
 
-      if interpolation == 1 {
-        interpolation = maxRate
-        decimation = int(math.Floor(float64(interpolation) / scaleFactor))
-
-        // Soundhack doesn't protect against divide by zero and actually crashes in
-        // some cases, let's protect divide by zero:
-        if decimation == 0 {
-          decimation = 1
+        // good enough, don't compute more
+        if percentError < 1.01 {
+          break
         }
-
-        rateLimited = true
-        break
       }
     }
   } else {
-    for decimation = maxRate; percentError > 1.01; decimation -= 1 {
+    for decimation = maxRate; decimation > 0; decimation-- {
       interpolation = int(math.Floor(float64(decimation) * scaleFactor))
 
-      // Soundhack doesn't protect against an interpolation of 0
-      // lets not allow that
       if interpolation == 0 {
         interpolation = 1
-        rateLimited = true
       }
 
-      var tempScaleFactor float64 = float64(interpolation) / float64(decimation)
+      tempScaleFactor := float64(interpolation) / float64(decimation)
+
+      var percentError float64
 
       if tempScaleFactor > scaleFactor {
         percentError = tempScaleFactor / scaleFactor
@@ -198,30 +185,38 @@ func computeTimeScaleData(windowSize int, scaleFactor float64) timeScalingData {
         percentError = scaleFactor / tempScaleFactor
       }
 
-      if percentError < 1.004 {
-        break
-      }
+      if minPercentError < 0.0 || percentError < minPercentError {
+        minPercentError = percentError
+        bestDecimation = decimation
+        bestInterpolation = interpolation
+        newScaleFactor = tempScaleFactor
 
-      if decimation == 1 {
-        decimation = maxRate
-        interpolation = int(math.Floor(float64(decimation) * scaleFactor))
-
-        // Soundhack doesn't protect against an interpolation of 0
-        // lets not allow that
-        if interpolation == 0 {
-          interpolation = 1
-          rateLimited = true
+        // good enough, don't compute more
+        if percentError < 1.01 {
+          break
         }
-
-        break
       }
     }
   }
 
+  // we are rateLimited if we asked for a larger scale factor than is possible:
+  // the max scaleFactor is  computed if interp or decimation is as at MaxRate and
+  // that has caused the other factor to go to 1
+
+  rateLimited := false
+
+  if scaleFactor > 1.0 && bestInterpolation == maxRate {
+    maxScaleFactor := float64(maxRate) / 1.0
+    rateLimited = scaleFactor > maxScaleFactor
+  } else if scaleFactor < 1.0 && bestDecimation == maxRate {
+    maxScaleFactor := 1.0 / float64(maxRate)
+    rateLimited = scaleFactor < maxScaleFactor
+  }
+
   return timeScalingData{
-    scaleFactor: float64(interpolation) / float64(decimation),
-    decimation: decimation,
-    interpolation: interpolation,
+    scaleFactor: newScaleFactor,
+    decimation: bestDecimation,
+    interpolation: bestInterpolation,
     rateLimited: rateLimited,
   }
 }

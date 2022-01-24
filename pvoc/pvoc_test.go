@@ -1,58 +1,115 @@
 package pvoc
 
 import(
+  "fmt"
+  "path/filepath"
+  "runtime"
+  "reflect"
   "testing"
 )
 
-func TestComputeTimeScaleData(t *testing.T) {
-  // scaleFactor > 1
-  bands := 4096
-  overlap := 4.0
-  scaleFactor := 1000.0
+// Helpers:
+// https://github.com/benbjohnson/testing
+// assert fails the test if the condition is false.
+func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
+  if !condition {
+    _, file, line, _ := runtime.Caller(1)
+    fmt.Printf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+    tb.FailNow()
+  }
+}
 
+// ok fails the test if an err is not nil.
+func ok(tb testing.TB, err error) {
+  if err != nil {
+    _, file, line, _ := runtime.Caller(1)
+    fmt.Printf("\033[31m%s:%d: unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+    tb.FailNow()
+  }
+}
+
+// equals fails the test if exp is not equal to act.
+func equals(tb testing.TB, exp, act interface{}) {
+  if !reflect.DeepEqual(exp, act) {
+    _, file, line, _ := runtime.Caller(1)
+    fmt.Printf("\033[31m%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033[39m\n\n", filepath.Base(file), line, exp, act)
+    tb.FailNow()
+  }
+}
+
+// helper to setup computation of salefactor:
+
+func returnTimeScaleData(bands, overlap, scaleFactor float64) timeScalingData {
   windowSize := int(float64(bands) * 2.0 * overlap)
 
-  result := computeTimeScaleData(
+  return computeTimeScaleData(
     windowSize,
     scaleFactor,
   )
+}
 
-  if result.decimation != 4 {
-    t.Errorf("> 1. decimation got %d, expected %d", result.decimation, 4)
-  }
 
-  if result.interpolation != 4039 {
-    t.Errorf("> 1. interpolation got %d, expected %d", result.interpolation, 4039)
-  }
+func TestComputeTimeScaleData(t *testing.T) {
+  // scaleFactor > 1
+  var result timeScalingData
+  result = returnTimeScaleData(
+    4096,   // bands
+    4.0,    // overlap
+    1000.0, // scaleFactor
+  )
 
-  if result.scaleFactor != 1009.75 {
-    t.Errorf("> 1. scaleFactor got %f, expected %f", result.scaleFactor, 1009.75)
-  }
+  equals(t, 4, result.decimation)
+  equals(t, 4039, result.interpolation)
+  equals(t, 1009.75, result.scaleFactor)
 
   // scaleFactor < 1
-  bands = 4096
-  overlap = 4.0
-  scaleFactor = 0.01
-
-  windowSize = int(float64(bands) * 2.0 * overlap)
-
-  result = computeTimeScaleData(
-    windowSize,
-    scaleFactor,
+  result = returnTimeScaleData(
+    4096,   // bands
+    4.0,    // overlap
+    0.01,   // scaleFactor
   )
 
-  if result.decimation != 4039 {
-    t.Errorf("> 1. decimation got %d, expected %d", result.decimation, 4039)
-  }
+  equals(t, 4039, result.decimation)
+  equals(t, 40, result.interpolation)
+  equals(t, float64(40)/float64(4039), result.scaleFactor)
+  assert(t, !result.rateLimited, "Rate Limited should be false")
 
-  if result.interpolation != 40 {
-    t.Errorf("> 1. interpolation got %d, expected %d", result.interpolation, 40)
-  }
 
-  expectedScaleFactor := float64(40)/float64(4039)
-  if result.scaleFactor !=  expectedScaleFactor {
-    t.Errorf("> 1. scaleFactor got %f, expected %f", result.scaleFactor, expectedScaleFactor)
-  }
+  // extreme factors > 1.0
+  result = returnTimeScaleData(
+    8,      // bands
+    1.0,    // overlap
+    10.0,   // scaleFactor
+  )
+
+  equals(t, 1, result.decimation)
+  equals(t, 2, result.interpolation)
+  equals(t, 2.0, result.scaleFactor)
+  assert(t, result.rateLimited, "Rate Limited should be true")
+
+  // extreme factors < 1.0
+  result = returnTimeScaleData(
+    8,      // bands
+    1.0,    // overlap
+    0.001,   // scaleFactor
+  )
+
+  equals(t, 2, result.decimation)
+  equals(t, 1, result.interpolation)
+  equals(t, 0.5, result.scaleFactor)
+  assert(t, result.rateLimited, "Rate Limited should be true")
+
+  // inbetween factors
+  result = returnTimeScaleData(
+    64,     // bands
+    1.0,    // overlap
+    6.7,    // scaleFactor
+  )
+
+  equals(t, 2, result.decimation)
+  equals(t, 14, result.interpolation)
+  equals(t, 7.0, result.scaleFactor)
+  assert(t, !result.rateLimited, "Rate Limited should be false")
 }
 
 func equalSlices(a, b []float64) bool {
