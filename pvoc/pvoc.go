@@ -45,8 +45,8 @@ type Pvoc struct {
   Operation int
   PhaseLock bool // only useful for TimeStretch
   WindowName string
-  GatingAmplitudeDb int
-  GatingThresholdDb int
+  GatingAmplitudeDb float64
+  GatingThresholdDb float64
   RateLimited bool // only set for TimeStretch
   gatingAmplitude float64
   gatingThreshold float64
@@ -60,7 +60,7 @@ func NewPvoc(
   phaseLock bool,
   windowName string,
   gatingAmplitudeDb,
-  gatingThresholdDb int,
+  gatingThresholdDb float64,
 ) (*Pvoc, error) {
   if bands > 4096 || bands < 1 || (bands & (bands - 1)) != 0 {
     return nil, fmt.Errorf("bands must be a power of 2 less than or equal to 4096, got %d", bands)
@@ -79,21 +79,21 @@ func NewPvoc(
   }
 
   if gatingAmplitudeDb > 0 {
-    return nil, fmt.Errorf("Resynthesis gating amplitude must be less than 0, got %d.", gatingAmplitudeDb)
+    return nil, fmt.Errorf("Resynthesis gating amplitude must be less than 0, got %f.", gatingAmplitudeDb)
   }
 
   if gatingThresholdDb > 0 {
-    return nil, fmt.Errorf("Resynthesis gating threshold below maximum must be less than 0, got %d.\n\n", gatingThresholdDb)
+    return nil, fmt.Errorf("Resynthesis gating threshold below maximum must be less than 0, got %f.", gatingThresholdDb)
   }
 
   gatingAmplitude := 0.0
   if gatingAmplitudeDb != 0 {
-    gatingAmplitude = math.Pow(10.0, float64(gatingAmplitudeDb) / 20.0)
+    gatingAmplitude = math.Pow(10.0, gatingAmplitudeDb / 20.0)
   }
 
   gatingThreshold := 0.0
   if gatingThresholdDb != 0 {
-    gatingThreshold = math.Pow(10.0, float64(gatingThresholdDb) / 20.0)
+    gatingThreshold = math.Pow(10.0, gatingThresholdDb / 20.0)
   }
 
   pvoc := &Pvoc{
@@ -152,11 +152,11 @@ func (p *Pvoc) String() (output string) {
   }
 
   if p.GatingAmplitudeDb != 0 {
-    output += fmt.Sprintf("%24s   %d\n", "Gating Amp Min:", p.GatingAmplitudeDb)
+    output += fmt.Sprintf("%24s   %f\n", "Gating Amp Min:", p.GatingAmplitudeDb)
   }
 
   if p.GatingThresholdDb != 0 {
-    output += fmt.Sprintf("%24s   %d\n", "Gating Amp Thresh <Max:", p.GatingThresholdDb)
+    output += fmt.Sprintf("%24s   %f\n", "Gating Amp Thresh <Max:", p.GatingThresholdDb)
   }
   return
 }

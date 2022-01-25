@@ -12,7 +12,7 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 * gopvoc can only read and write AIFF files.
 * gopvoc pitch shifting can only take a multiplier scale factor for pitch (octave lower is scale factor of 0.5, octave higher is 2.0, etc).
 * gopvoc time stretching can only take a multiplier scale factor for time instead of a target output duration.
-* gopvoc does not allow a scaling function, it only accepts a signal value for scale factor.
+* gopvoc does not allow a scaling function, it only accepts a single value for scale factor.
 
 # Commands
 
@@ -60,11 +60,11 @@ Windowing function for FFT processing (must be one of: rectangle, hamming, vonha
 
 Resynthesis gating minimum db level (optional):
 
-`-ga <db>`
+`-ga <dBFS gate threshold>`
 
 Resynthesis gating threshold db level below maximum (optional):
 
-`-gt <db>`
+`-gt <dBFS gate threshold>`
 
 Quiet flag (suppress stdout information and progress bar):
 
@@ -78,10 +78,6 @@ Time stretching can do phase locking during resynthesis, to enable it:
 
 Time stretching is acheived via windowed FFT analysis of the input file, then resynthesis into the output file via [overlap add resynthesis](https://ccrma.stanford.edu/~jos/parshl/Overlap_Add_Synthesis.html).
 
-For a list of flags relevant to time stretching:
-
-`./gopvoc time -h`
-
 Note that the original SoundHack could crash given certain program states based on extreme stretching multipliers. The maximum or minimum allowed `-s` scale multiplier is dependent on the FFT window size which in turn is dependent on the number of FFT bands requested by the `-b` flag and the overlap factor given by the `-o` flag. Unlike SoundHack, gopvoc will cap the multiplier within this limit instead of crashing due to a division by zero. Program output will indicate of your requested `-s <scale multiplier>` flag has been limited.
 
 Example:
@@ -93,10 +89,6 @@ The above example takes `strings.aif`, and stretches it to be 10 times the origi
 ## Pitch Shifting
 
 Pitch shifting is acheived via windowed FFT analysis of the input file, then resynthesis into the output file via [oscillator bank resynthesis](https://en.wikipedia.org/wiki/Additive_synthesis#Oscillator_bank_synthesis).
-
-For a list of flags relevant to pitch shifting:
-
-`./gopvoc pitch -h`
 
 Example:
 
