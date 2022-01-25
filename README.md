@@ -124,7 +124,11 @@ Example:
 
 If in a given FFT analysis window, frequency bin #45 has the largest amplitude of all bins at -3dBFS, any frequency in the window with an amplitude below -13dbFS will be dropped. This is done for each FFT analysis window.
 
-# Build instructions
+# Window Functions
+
+Hamming window is the default window function. Because Hamming windows do not touch zero, some discontinuities are produced in the analysis and synthesis windowed data which may appear in some material as a "zippering" sound across channels. Try another window type like Kaiser, Sinc or von Hann which all touch zero.
+
+# Build Instructions
 
 * [Download and Install the Go language](https://go.dev/) for your system. Gopvoc has only been tested and built with Go 1.17.
 * Clone this respository
