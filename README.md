@@ -135,4 +135,6 @@ Hamming window is the default window function. Because Hamming windows do not to
 * run `go build -o gopvoc`
 * you should now have an executable `./gopvoc` in the current directory.
 
-Binaries have been cross-compiled for OS X amd64 (Intel), arm64 (M1) as well as Linux (amd64) and Windows (amd64).
+# Binaries
+
+[Binaries have been cross-compiled](https://github.com/corporealfunk/gopvoc/releases) for OS X amd64 (Intel), arm64 (M1) as well as Linux (amd64) and Windows (amd64).
