@@ -35,6 +35,8 @@ func main() {
     parsedArgs.Operation,
     parsedArgs.PhaseLock,
     parsedArgs.WindowName,
+    parsedArgs.GatingAmplitude,
+    parsedArgs.GatingThreshold,
   )
 
   if err != nil {
@@ -52,12 +54,12 @@ func main() {
   if !parsedArgs.Quiet {
     fmt.Print(processor.String())
 
-    fmt.Printf("Number of Channels:   %d\n", aiffReader.NumChans)
-    fmt.Printf("Bit Depth:            %d\n", aiffReader.BitDepth)
-    fmt.Printf("Input Duration:       %f s\n", aiffReader.Duration)
+    fmt.Printf("%24s   %d\n", "Number of Channels:", aiffReader.NumChans)
+    fmt.Printf("%24s   %d\n", "Bit Depth:", aiffReader.BitDepth)
+    fmt.Printf("%24s   %f s\n", "Input Duration:", aiffReader.Duration)
 
     if processor.Operation == pvoc.TimeStretch {
-      fmt.Printf("Output Duration:      %f s\n", aiffReader.Duration * processor.ScaleFactor)
+      fmt.Printf("%24s   %f s\n", "Output Duration:", aiffReader.Duration * processor.ScaleFactor)
     }
   }
 

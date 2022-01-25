@@ -13,11 +13,24 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 * gopvoc pitch shifting can only take a multiplier scale factor for pitch (octave lower is scale factor of 0.5, octave higher is 2.0, etc).
 * gopvoc time stretching can only take a multiplier scale factor for time instead of a target output duration.
 * gopvoc does not allow a scaling function, it only accepts a signal value for scale factor.
-* gopvoc does not currently implement resynthesis gating.
 
-# Commands and Options
+# Commands
 
-## Flags and Options
+gopvoc has two modes of operation, time stretching and pitch shifting. They are invoked like so:
+
+`./gopvoc time [options]`
+
+`./gopvoc pitch [options]`
+
+# Getting Help
+
+To see options and defaults for each command:
+
+`./gopvoc time -h`
+
+`./gopvoc pitch -h`
+
+# Flags and Options
 
 Both time stretching and pitch shifting use the following common set of flags:
 
@@ -44,6 +57,14 @@ Scale factor (for time stretching, the amount to mutliply input duration by. For
 Windowing function for FFT processing (must be one of: rectangle, hamming, vonhann, kaiser, sinc, triangle, ramp):
 
 `-w <window function name>`
+
+Resynthesis gating minimum db level (optional):
+
+`-ga <db>`
+
+Resynthesis gating threshold db level below maximum (optional):
+
+`-gt <db>`
 
 Quiet flag (suppress stdout information and progress bar):
 
@@ -82,6 +103,34 @@ Example:
 `./gopvoc pitch -i strings.aif -f strings_octavedown.aif -b 2048 -o 1 -s 0.5`
 
 The above example takes `strings.aif`, and pitch shifts it down one octave (0.5 multipler of any given pitch in Hz is an octave lower) using 2048 FFT bands with an overlap factor of 1.
+
+## Resynthesis Gating
+
+After the forward FFT is taken, the data is passed through a spectral gate. The only operation available to the gate is to remove spectral data for a given FFT bin if the bin's amplitude does not meet one of the following thresholds. Either, both or none of these options may be passed:
+
+**Resynthesis Gating Amplitude (db):**
+
+`-ga -<db gate level>`
+
+If an FFT bin's db amplitude does not meet the threshold given by the flag (expressed as db below 0dBFS), the bin's spectral data is removed.
+
+Example:
+
+`-ga -3`
+
+Any spectral data with an amplitude less than -3db below 0dBFS will not be resynthesized.
+
+**Resynthesis Gating Threshold (db) Below Maximum:**
+
+`-gt -<db gate level>`
+
+For each windowed FFT taken of the input, the maximum amplitude is found across all bins (frequencies). As above, a bin's spectral data is dropped, but only if the bin's amplitude does not meet the decibel threshold given, but compared against the maximum amplitude of the windowed FFT (as opposed to 0dBFS).
+
+Example:
+
+`-ga -10`
+
+If in a given FFT analysis window, frequency bin #45 has the largest amplitude of all bins at -3dBFS, any frequency in the window with an amplitude below -13dbFS will be dropped. This is done for each FFT analysis window.
 
 # Build instructions
 

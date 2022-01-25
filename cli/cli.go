@@ -18,6 +18,8 @@ type Arguments struct {
   OutputPath string
   PhaseLock bool
   WindowName string
+  GatingAmplitude int
+  GatingThreshold int
 }
 
 func ParseFlags(args []string) (*Arguments, error) {
@@ -35,6 +37,8 @@ func ParseFlags(args []string) (*Arguments, error) {
   timeOverlap := timeCmd.Float64("o", 1.0, "overlap: overlap factor, allowed values: 0.5, 1, 2, 4")
   timePhaseLock := timeCmd.Bool("p", false, "phase lock flag: enable phase locking during resynthesis")
   timeWindowName := timeCmd.String("w", "hamming", "window: windowing function to use, one of: " + pvoc.WindowNamesString())
+  timeGatingAmplitude := timeCmd.Int("ga", 0, "resynthesis gating amplitude (db): amplitude below 0db under which an FFT frequency is removed from the spectrum.")
+  timeGatingThreshold := timeCmd.Int("gt", 0, "resynthesis gating threshold (db) below maximum: any FFT frequency bin with an amplitude this far below the maximum amplitude of all bins in that FFT window will get removed.")
   timeQuiet := timeCmd.Bool("q", false, "quiet flag: suppress informational output")
   timeOutput := timeCmd.String("f", "", "output file: path to write output AIFF. It will be overwritten if it exists")
 
@@ -45,6 +49,8 @@ func ParseFlags(args []string) (*Arguments, error) {
   pitchBands := pitchCmd.Int("b", 4096, "bands: number of FFT bands to use during processing. Must be a power of two between 2 to 4096 inclusive")
   pitchOverlap := pitchCmd.Float64("o", 1.0, "overlap: overlap factor, allowed values: 0.5, 1, 2, 4")
   pitchWindowName := pitchCmd.String("w", "hamming", "window: windowing function to use, one of: " + pvoc.WindowNamesString())
+  pitchGatingAmplitude := pitchCmd.Int("ga", 0, "resynthesis gating amplitude (db): amplitude below 0db under which an FFT frequency is removed from the spectrum.")
+  pitchGatingThreshold := pitchCmd.Int("gt", 0, "resynthesis gating threshold (db) below maximum: any FFT frequency bin with an amplitude this far below the maximum amplitude of all bins in that FFT window will get removed.")
   pitchQuiet := pitchCmd.Bool("q", false, "quiet flag: suppress informational output")
   pitchOutput := pitchCmd.String("f", "", "output file: path to write output AIFF. It will be overwritten if it exists")
 
@@ -65,6 +71,8 @@ func ParseFlags(args []string) (*Arguments, error) {
     parsedArgs.Overlap = *timeOverlap
     parsedArgs.PhaseLock = *timePhaseLock
     parsedArgs.WindowName = *timeWindowName
+    parsedArgs.GatingAmplitude = *timeGatingAmplitude
+    parsedArgs.GatingThreshold = *timeGatingThreshold
     parsedArgs.Quiet = *timeQuiet
 
     if len(*timeOutput) == 0 {
@@ -85,6 +93,8 @@ func ParseFlags(args []string) (*Arguments, error) {
     parsedArgs.Bands = *pitchBands
     parsedArgs.Overlap = *pitchOverlap
     parsedArgs.WindowName = *pitchWindowName
+    parsedArgs.GatingAmplitude = *pitchGatingAmplitude
+    parsedArgs.GatingThreshold = *pitchGatingThreshold
     parsedArgs.Quiet = *pitchQuiet
 
     if len(*pitchOutput) == 0 {

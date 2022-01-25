@@ -45,7 +45,11 @@ type Pvoc struct {
   Operation int
   PhaseLock bool // only useful for TimeStretch
   WindowName string
+  GatingAmplitudeDb int
+  GatingThresholdDb int
   RateLimited bool // only set for TimeStretch
+  gatingAmplitude float64
+  gatingThreshold float64
 }
 
 func NewPvoc(
@@ -55,6 +59,8 @@ func NewPvoc(
   operation int,
   phaseLock bool,
   windowName string,
+  gatingAmplitudeDb,
+  gatingThresholdDb int,
 ) (*Pvoc, error) {
   if bands > 4096 || bands < 1 || (bands & (bands - 1)) != 0 {
     return nil, fmt.Errorf("bands must be a power of 2 less than or equal to 4096, got %d", bands)
@@ -72,6 +78,24 @@ func NewPvoc(
     return nil, fmt.Errorf("Scale multiplier cannot be negative, got %f", scaleFactor)
   }
 
+  if gatingAmplitudeDb > 0 {
+    return nil, fmt.Errorf("Resynthesis gating amplitude must be less than 0, got %d.", gatingAmplitudeDb)
+  }
+
+  if gatingThresholdDb > 0 {
+    return nil, fmt.Errorf("Resynthesis gating threshold below maximum must be less than 0, got %d.\n\n", gatingThresholdDb)
+  }
+
+  gatingAmplitude := 0.0
+  if gatingAmplitudeDb != 0 {
+    gatingAmplitude = math.Pow(10.0, float64(gatingAmplitudeDb) / 20.0)
+  }
+
+  gatingThreshold := 0.0
+  if gatingThresholdDb != 0 {
+    gatingThreshold = math.Pow(10.0, float64(gatingThresholdDb) / 20.0)
+  }
+
   pvoc := &Pvoc{
     Bands: bands,
     Overlap: overlap,
@@ -81,6 +105,10 @@ func NewPvoc(
     Operation: operation,
     PhaseLock: phaseLock,
     WindowName: windowName,
+    GatingAmplitudeDb: gatingAmplitudeDb,
+    GatingThresholdDb: gatingThresholdDb,
+    gatingAmplitude: gatingAmplitude,
+    gatingThreshold: gatingThreshold,
   }
 
   if operation == TimeStretch {
@@ -100,10 +128,10 @@ func NewPvoc(
 }
 
 func (p *Pvoc) String() (output string) {
-  output += fmt.Sprintf("Operation:            %s\n", OperationNames[p.Operation])
-  output += fmt.Sprintf("Bands:                %d\n", p.Bands)
-  output += fmt.Sprintf("Overlap:              %f\n", p.Overlap)
-  output += fmt.Sprintf("Scaling:              %f", p.ScaleFactor)
+  output += fmt.Sprintf("%24s   %s\n", "Operation:", OperationNames[p.Operation])
+  output += fmt.Sprintf("%24s   %d\n", "Bands:", p.Bands)
+  output += fmt.Sprintf("%24s   %f\n", "Overlap:", p.Overlap)
+  output += fmt.Sprintf("%24s   %f", "Scaling:", p.ScaleFactor)
 
   if p.Operation == TimeStretch && p.RateLimited {
     output += " (limited to "
@@ -115,13 +143,20 @@ func (p *Pvoc) String() (output string) {
     output += ")"
   }
   output += "\n"
-  output += fmt.Sprintf("Window:               %s\n", p.WindowName)
-
-  output += fmt.Sprintf("Decimation Length:    %d samples\n", p.Decimation)
-  output += fmt.Sprintf("Interpolation Length: %d samples\n", p.Interpolation)
+  output += fmt.Sprintf("%24s   %s\n", "Windowing Func:", p.WindowName)
+  output += fmt.Sprintf("%24s   %d samples\n", "Decimation Length:", p.Decimation)
+  output += fmt.Sprintf("%24s   %d samples\n", "Interpolation Length:", p.Interpolation)
 
   if p.Operation == TimeStretch {
-    output += fmt.Sprintf("Phase Locking:        %t\n", p.PhaseLock)
+    output += fmt.Sprintf("%24s   %t\n", "Phase Locking:", p.PhaseLock)
+  }
+
+  if p.GatingAmplitudeDb != 0 {
+    output += fmt.Sprintf("%24s   %d\n", "Gating Amp Min:", p.GatingAmplitudeDb)
+  }
+
+  if p.GatingThresholdDb != 0 {
+    output += fmt.Sprintf("%24s   %d\n", "Gating Amp Thresh <Max:", p.GatingThresholdDb)
   }
   return
 }
@@ -249,6 +284,9 @@ func (p *Pvoc) Run(
 
   halfPoints := p.Points / 2
 
+  // what is the maximum ABS sample value at our BitDepth?
+  maxSampleValue := math.Pow(2, float64(aiffReader.BitDepth - 1))
+
   for c := 0; c < aiffReader.NumChans; c++ {
     inputBuffers[c] = NewSlidingBuffer(p.WindowSize)
     outputBuffers[c] = NewSlidingBuffer(p.WindowSize)
@@ -353,7 +391,16 @@ func (p *Pvoc) Run(
       // convert the FFT spectrum to polar
       CartToPolar(spectrumBuffers[c], polarBuffers[c])
 
-      SimpleSpectralGate(polarBuffers[c], p.Points)
+      // gate the spectrum if need to
+      if p.gatingAmplitude != 0.0 || p.gatingThreshold != 0.0 {
+        SimpleSpectralGate(
+          polarBuffers[c],
+          p.Points,
+          p.gatingAmplitude,
+          p.gatingThreshold,
+          maxSampleValue,
+        )
+      }
 
       if p.Operation == TimeStretch {
         // TimeStrech operations:
@@ -571,12 +618,14 @@ func PolarToCart(polarSpectrum, spectrum []float64) {
   }
 }
 
-func SimpleSpectralGate(polarSpectrum []float64, points int) {
+func SimpleSpectralGate(
+  polarSpectrum []float64,
+  points int,
+  minAmplitude,
+  maskRatio,
+  maxSampleValue float64,
+) {
   halfPoints := points / 2
-
-  // these always seem to be 0 in SoundHack?
-  maskRatio := 0.0
-  minAmplitude := 0.0
 
   maxAmplitude := 0.0
 
@@ -594,11 +643,11 @@ func SimpleSpectralGate(polarSpectrum []float64, points int) {
   for bandNumber := 0; bandNumber <= halfPoints; bandNumber++ {
     ampIndex := bandNumber * 2
 
+    normalizedAmp := polarSpectrum[ampIndex] / maxSampleValue
+
     /* Set for Ducking */
-    if polarSpectrum[ampIndex] < maskAmplitude {
-      polarSpectrum[ampIndex] = 0.0;
-    } else if polarSpectrum[ampIndex] < minAmplitude {
-      polarSpectrum[ampIndex] = 0.0;
+    if polarSpectrum[ampIndex] < maskAmplitude || normalizedAmp < minAmplitude {
+      polarSpectrum[ampIndex] = 0.0
     }
   }
 }
