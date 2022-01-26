@@ -32,6 +32,10 @@ To see options and defaults for each command:
 
 # Flags and Options
 
+Print gopvoc version:
+
+`./gopvoc --version`
+
 Both time stretching and pitch shifting use the following common set of flags:
 
 Input AIFF file path (required):

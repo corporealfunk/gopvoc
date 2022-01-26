@@ -2,33 +2,36 @@
 
 version=$1
 
+if [ "$version" == "" ]; then
+  echo "Version number required"
+  exit 1
+fi
+
 builds_dir="builds"
 mkdir -p $builds_dir
 
-# Darin amd64
-darwin_amd64_dir="gopvoc_${version}_darwin_amd64_intel"
+build () {
+  platform=$1
+  arch=$2
+  version=$3
+  builds_dir=$4
+  target_suffix=$5
+  binary_extension=$6
+  zip=$7
+  target_name="gopvoc_${version}_${platform}_${arch}${target_suffix}"
 
-GOOS=darwin GOARCH=amd64 go build -o "${builds_dir}/${darwin_amd64_dir}/gopvoc" main.go
+  GOOS=$platform GOARCH=$arch go build -ldflags="-X 'main.Version=${version}'" -o "${builds_dir}/${target_name}/gopvoc${6}" main.go
 
-# Darin arm64
-darwin_arm64_dir="gopvoc_${version}_darwin_arm64_m1"
+  cd $builds_dir
+  if [ "$zip" != "" ]; then
+    zip -r "${target_name}.zip" ${target_name}
+  else
+    tar -zcvf "${target_name}.tar.gz" ${target_name}
+  fi
+  cd ..
+}
 
-GOOS=darwin GOARCH=arm64 go build -o "${builds_dir}/${darwin_arm64_dir}/gopvoc" main.go
-
-# Linux amd64
-linux_amd64_dir="gopvoc_${version}_linux_amd64"
-
-GOOS=linux GOARCH=amd64 go build -o "${builds_dir}/${linux_amd64_dir}/gopvoc" main.go
-
-# Windows amd64
-windows_amd64_dir="gopvoc_${version}_windows_amd64"
-
-GOOS=windows GOARCH=amd64 go build -o "${builds_dir}/${windows_amd64_dir}/gopvoc.exe" main.go
-
-# tar and zip:
-cd $builds_dir
-
-tar -zcvf "${darwin_amd64_dir}.tar.gz" $darwin_amd64_dir
-tar -zcvf "${darwin_arm64_dir}.tar.gz" $darwin_arm64_dir
-tar -zcvf "${linux_amd64_dir}.tar.gz" $linux_amd64_dir
-zip -r "${windows_amd64_dir}.zip" $windows_amd64_dir
+build "darwin" "amd64" ${version} ${builds_dir} "_intel"
+build "darwin" "arm64" ${version} ${builds_dir} "_m1"
+build "linux" "amd64" ${version} ${builds_dir}
+build "windows" "amd64" ${version} ${builds_dir} "" ".exe" 1

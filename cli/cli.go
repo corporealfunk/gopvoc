@@ -22,8 +22,18 @@ type Arguments struct {
   GatingThreshold float64
 }
 
-func ParseFlags(args []string) (*Arguments, error) {
-  cmdError := fmt.Errorf("usage: gopvoc <command> <args>\n\nAvailable Commands:\n\n    time    time stretch input AIFF file\n    pitch   pitch shift input AIFF file\n\nFor specific command options:\n\ngopvoc <command> -h\n\n")
+func ParseFlags(args []string, version string) (*Arguments, error) {
+  var flgVersion bool
+  flag.BoolVar(&flgVersion, "version", false, "print version and exit")
+
+  flag.Parse()
+
+  if flgVersion {
+    fmt.Printf("version: %s\n", version)
+    os.Exit(0)
+  }
+
+  cmdError := fmt.Errorf("usage: gopvoc [--version] <command> <args>\n\nAvailable Commands:\n\n    time    time stretch input AIFF file\n    pitch   pitch shift input AIFF file\n\nFor specific command options:\n\ngopvoc <command> -h\n\n")
 
   if len(args) < 2 {
     return nil, cmdError

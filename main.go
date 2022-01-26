@@ -9,9 +9,11 @@ import (
   "github.com/schollz/progressbar/v3"
 )
 
+var Version = ""
+
 func main() {
   // parse cli flags/arguments
-  parsedArgs, err := cli.ParseFlags(os.Args)
+  parsedArgs, err := cli.ParseFlags(os.Args, Version)
 
   if err != nil {
     fmt.Fprintln(os.Stderr, err)
