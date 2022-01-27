@@ -2,6 +2,7 @@ package pvoc
 
 import(
   "fmt"
+  "math"
 )
 
 type SlidingBuffer struct {
@@ -92,7 +93,7 @@ func (sb *SlidingBuffer) DataInts() (buffer []int) {
   buffer = make([]int, len(sb.Data), len(sb.Data))
 
   for i := 0; i < len(sb.Data); i++ {
-    buffer[i] = int(sb.Data[i])
+    buffer[i] = int(math.Round(sb.Data[i]))
   }
 
   return buffer

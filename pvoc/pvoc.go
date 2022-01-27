@@ -457,7 +457,6 @@ func (p *Pvoc) Run(
       for c := 0; c < aiffReader.NumChans; c++ {
         err = aiffWriter.InterleaveChannel(
           c,
-          // TODO: we are truncating float64 samples to Ints. is that ok?
           outputBuffers[c].DataInts()[:p.Interpolation],
         )
 
