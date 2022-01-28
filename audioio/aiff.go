@@ -8,6 +8,13 @@ import(
   "github.com/go-audio/audio"
 )
 
+var IntMaxSignedValue = map[int]int {
+  8: 127,
+  16: 32767,
+  24: 8388607,
+  32: 2147483647,
+}
+
 type AiffReader struct {
   NumChans int
   BitDepth int
@@ -28,6 +35,7 @@ type AiffWriter struct {
   WriteBuffer *audio.IntBuffer
   encoder *aiff.Encoder
   fileWriter *os.File
+  maxSampleValue int
 }
 
 // bufferLength: how many frames to read at one time
@@ -147,6 +155,12 @@ func (aw *AiffWriter) Create(bufferLength int) error {
     SourceBitDepth: aw.BitDepth,
   }
 
+  aw.maxSampleValue = IntMaxSignedValue[aw.BitDepth]
+
+  if aw.maxSampleValue == 0 {
+    return fmt.Errorf("BitDepth %d returned invalid integer max signed value of 0", aw.BitDepth)
+  }
+
   return nil
 }
 
@@ -155,14 +169,18 @@ func (aw *AiffWriter) Close() {
   aw.fileWriter.Close()
 }
 
-func (aw *AiffWriter) Write(buffer *audio.IntBuffer, lenToWrite int) error {
-  writeBuffer := &audio.IntBuffer{
-    Format: buffer.Format,
-    Data: buffer.Data[0:lenToWrite],
-    SourceBitDepth: buffer.SourceBitDepth,
+func (aw *AiffWriter) Write(buffer *audio.IntBuffer) error {
+  // clip gaurd: if any sample in the int buffer exceeds maximum allowed for the
+  // buffer's BitDepth, clip the sample instead of letting the encoder have it
+  for i := 0; i < len(buffer.Data); i++ {
+    if buffer.Data[i] > aw.maxSampleValue {
+      buffer.Data[i] = aw.maxSampleValue
+    } else if buffer.Data[i] < -aw.maxSampleValue {
+      buffer.Data[i] = -aw.maxSampleValue
+    }
   }
 
-  return aw.encoder.Write(writeBuffer)
+  return aw.encoder.Write(buffer)
 }
 
 func (aw *AiffWriter) ZeroWriteBuffer() {
@@ -172,7 +190,7 @@ func (aw *AiffWriter) ZeroWriteBuffer() {
 }
 
 func (aw *AiffWriter) WriteNext() error {
-  return aw.encoder.Write(aw.WriteBuffer)
+  return aw.Write(aw.WriteBuffer)
 }
 
 func (aw *AiffWriter) InterleaveChannel(channel int, data []int) error {
