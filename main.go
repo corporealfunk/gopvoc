@@ -58,10 +58,12 @@ func main() {
 
     fmt.Printf("%24s   %d\n", "Number of Channels:", aiffReader.NumChans)
     fmt.Printf("%24s   %d\n", "Bit Depth:", aiffReader.BitDepth)
-    fmt.Printf("%24s   %f s\n", "Input Duration:", aiffReader.Duration)
+    fmt.Printf("%24s   %d\n", "Sample Rate:", aiffReader.SampleRate)
+    fmt.Printf("%24s   %.2f\n", "Hz/FFT Band:", float64(aiffReader.SampleRate) / float64(processor.Bands) / 2.0)
+    fmt.Printf("%24s   %.2f s\n", "Input Duration:", aiffReader.Duration)
 
     if processor.Operation == pvoc.TimeStretch {
-      fmt.Printf("%24s   %f s\n", "Output Duration:", aiffReader.Duration * processor.ScaleFactor)
+      fmt.Printf("%24s   %.2f s\n", "Output Duration:", aiffReader.Duration * processor.ScaleFactor)
     }
   }
 

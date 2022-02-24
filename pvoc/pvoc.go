@@ -62,8 +62,8 @@ func NewPvoc(
   gatingAmplitudeDb,
   gatingThresholdDb float64,
 ) (*Pvoc, error) {
-  if bands > 4096 || bands < 1 || (bands & (bands - 1)) != 0 {
-    return nil, fmt.Errorf("bands must be a power of 2 less than or equal to 4096, got %d", bands)
+  if bands > 8192 || bands < 1 || (bands & (bands - 1)) != 0 {
+    return nil, fmt.Errorf("bands must be a power of 2 less than or equal to 8192, got %d", bands)
   }
 
   if !allowedOverlaps[overlap] {
@@ -130,8 +130,8 @@ func NewPvoc(
 func (p *Pvoc) String() (output string) {
   output += fmt.Sprintf("%24s   %s\n", "Operation:", OperationNames[p.Operation])
   output += fmt.Sprintf("%24s   %d\n", "Bands:", p.Bands)
-  output += fmt.Sprintf("%24s   %f\n", "Overlap:", p.Overlap)
-  output += fmt.Sprintf("%24s   %f", "Scaling:", p.ScaleFactor)
+  output += fmt.Sprintf("%24s   %.2f\n", "Overlap:", p.Overlap)
+  output += fmt.Sprintf("%24s   %.2f", "Scaling:", p.ScaleFactor)
 
   if p.Operation == TimeStretch && p.RateLimited {
     output += " (limited to "
@@ -279,7 +279,7 @@ func (p *Pvoc) Run(
   lastAmps := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
   lastFreqs := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
   sineIndexes := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
-  sineTable := make([]float64, 8192, 8192)
+  sineTable := make([]float64, 16384, 16384)
   SineTable(sineTable)
 
   halfPoints := p.Points / 2
@@ -779,8 +779,10 @@ func OverlapAdd(spectrum, synthesisWindow, output []float64, outPointer int) {
    halfPoints := points / 2
 
    oneOvrInterp := 1.0 / float64(interpolation)
-   cyclesBand := scaleFactor * 8192.0 / float64(points)
-   cyclesFrame := scaleFactor * 8192.0 / (float64(decimation) * twoPi)
+
+   sineTableLen := float64(len(sineTable))
+   cyclesBand := scaleFactor * sineTableLen / float64(points)
+   cyclesFrame := scaleFactor * sineTableLen / (float64(decimation) * twoPi)
 
    var numberPartials int
 
@@ -842,12 +844,12 @@ func OverlapAdd(spectrum, synthesisWindow, output []float64, outPointer int) {
          address += frequency
 
          // unwrap phase
-         for address >= 8192 {
-           address -= 8192
+         for address >= sineTableLen {
+           address -= sineTableLen
          }
 
          for address < 0 {
-           address += 8192
+           address += sineTableLen
          }
 
          amplitude += ampIncrement

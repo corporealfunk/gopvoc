@@ -14,6 +14,7 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 * gopvoc time stretching can only take a multiplier scale factor for time instead of a target output duration.
 * gopvoc does not allow a scaling function, it only accepts a single value for scale factor.
 * gopvoc handles output clipping differently than SoundHack. Before writing to disk, gopvoc clips any samples to the max or min allowed value for the given bit depth.
+* gopvoc can analyze up to 8192 FFT bands.
 
 # Commands
 
@@ -47,7 +48,7 @@ Output AIFF file path (required):
 
 `-f <path to output file>`
 
-Number of requested bands for FFT processing (must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096):
+Number of requested bands for FFT processing (must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192):
 
 `-b <number of bands>`
 
