@@ -8,8 +8,8 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 
 * gopvoc doesn't allow time stretching beyond the maximum or minimum as determined by the given inputs, see below. The way the "best" interpolation and decimation rates are determined is slightly different than the original SoundHack.
 * gopvoc uses a slightly different vonn Hann window function than SoundHack
-* gopvoc can process AIFF files with an arbitrary number of channels.
-* gopvoc can only read and write AIFF files.
+* gopvoc can process AIFF/WAV files with an arbitrary number of channels.
+* gopvoc can only read and write AIFF and WAV files.
 * gopvoc pitch shifting can only take a multiplier scale factor for pitch (octave lower is scale factor of 0.5, octave higher is 2.0, etc).
 * gopvoc time stretching can only take a multiplier scale factor for time instead of a target output duration.
 * gopvoc does not allow a scaling function, it only accepts a single value for scale factor.
@@ -40,11 +40,11 @@ Print gopvoc version:
 
 Both time stretching and pitch shifting use the following common set of flags:
 
-Input AIFF file path (required):
+Input AIFF/WAV file path (required):
 
 `-i <path to input file>`
 
-Output AIFF file path (required):
+Output AIFF/WAV file path (required):
 
 `-f <path to output file>`
 
