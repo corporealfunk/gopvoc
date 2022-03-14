@@ -8,47 +8,55 @@ import(
   "github.com/go-audio/audio"
 )
 
-var IntMaxSignedValue = map[int]int {
-  8: 127,
-  16: 32767,
-  24: 8388607,
-  32: 2147483647,
-}
-
 type AiffReader struct {
-  NumChans int
-  BitDepth int
-  SampleRate int
+  AudioFile
   ReadBuffer *audio.IntBuffer
-  Filepath string
   NumSampleFrames int
   Duration float64
   decoder *aiff.Decoder
-  fileReader *os.File
+  fileIo *os.File
 }
 
 type AiffWriter struct {
-  Filepath string
-  NumChans int
-  BitDepth int
-  SampleRate int
+  AudioFile
   WriteBuffer *audio.IntBuffer
   encoder *aiff.Encoder
-  fileWriter *os.File
   maxSampleValue int
+  fileIo *os.File
+}
+
+// Getters
+func (ar *AiffReader) GetBitDepth() int {
+  return ar.BitDepth
+}
+
+func (ar *AiffReader) GetSampleRate() int {
+  return ar.SampleRate
+}
+
+func (ar *AiffReader) GetNumChans() int {
+  return ar.NumChans
+}
+
+func (ar *AiffReader) GetNumSampleFrames() int {
+  return ar.NumSampleFrames
+}
+
+func (ar *AiffReader) GetDuration() float64 {
+  return ar.Duration
 }
 
 // bufferLength: how many frames to read at one time
 func (ar *AiffReader) Open(bufferLength int) error {
   var err error
 
-  ar.fileReader, err = os.Open(ar.Filepath)
+  ar.fileIo, err = os.Open(ar.Filepath)
 
   if err != nil {
     return err
   }
 
-  ar.decoder = aiff.NewDecoder(ar.fileReader)
+  ar.decoder = aiff.NewDecoder(ar.fileIo)
 
   ar.decoder.ReadInfo()
 
@@ -116,7 +124,7 @@ func (ar *AiffReader) ExtractChannel(channel int) (*audio.IntBuffer, error) {
 }
 
 func (ar *AiffReader) Close() {
-  ar.fileReader.Close()
+  ar.fileIo.Close()
 }
 
 // numSamples is the number of samples read across all channels
@@ -131,14 +139,14 @@ func (ar *AiffReader) ReadNext() (numSamples, numFrames int, err error) {
 func (aw *AiffWriter) Create(bufferLength int) error {
   var err error
 
-  aw.fileWriter, err = os.Create(aw.Filepath)
+  aw.fileIo, err = os.Create(aw.Filepath)
 
   if err != nil {
     return err
   }
 
   aw.encoder = aiff.NewEncoder(
-    aw.fileWriter,
+    aw.fileIo,
     aw.SampleRate,
     aw.BitDepth,
     aw.NumChans,
@@ -166,7 +174,7 @@ func (aw *AiffWriter) Create(bufferLength int) error {
 
 func (aw *AiffWriter) Close() {
   aw.encoder.Close()
-  aw.fileWriter.Close()
+  aw.fileIo.Close()
 }
 
 func (aw *AiffWriter) Write(buffer *audio.IntBuffer) error {

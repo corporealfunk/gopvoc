@@ -257,37 +257,37 @@ func computeTimeScaleData(windowSize int, scaleFactor float64) timeScalingData {
 }
 
 func (p *Pvoc) Run(
-  aiffReader *audioio.AiffReader,
-  aiffWriter *audioio.AiffWriter,
+  audioReader *audioio.AudioReader,
+  audioWriter *audioio.AudioWriter,
   progress chan<- int,
   errors chan<- error,
   done chan<- bool,
 ) {
   // setup the buffers for input and output
-  inputBuffers := make([]*SlidingBuffer, aiffReader.NumChans, aiffReader.NumChans)
-  outputBuffers := make([]*SlidingBuffer, aiffReader.NumChans, aiffReader.NumChans)
+  inputBuffers := make([]*SlidingBuffer, audioReader.GetNumChans(), audioReader.GetNumChans())
+  outputBuffers := make([]*SlidingBuffer, audioReader.GetNumChans(), audioReader.GetNumChans())
 
   // setup the FFT processing buffers
-  spectrumBuffers := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
-  polarBuffers := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
+  spectrumBuffers := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
+  polarBuffers := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
 
   // setup storage of last processed phases for interoplation for TimeStrech
-  lastPhaseIns := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
-  lastPhaseOuts := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
+  lastPhaseIns := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
+  lastPhaseOuts := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
 
   // setup amp, freq and sine index storage for PitchShift and sineTable
-  lastAmps := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
-  lastFreqs := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
-  sineIndexes := make([][]float64, aiffReader.NumChans, aiffReader.NumChans)
+  lastAmps := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
+  lastFreqs := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
+  sineIndexes := make([][]float64, audioReader.GetNumChans(), audioReader.GetNumChans())
   sineTable := make([]float64, 16384, 16384)
   SineTable(sineTable)
 
   halfPoints := p.Points / 2
 
   // what is the maximum ABS sample value at our BitDepth?
-  maxSampleValue := math.Pow(2, float64(aiffReader.BitDepth - 1))
+  maxSampleValue := math.Pow(2, float64(audioReader.GetBitDepth() - 1))
 
-  for c := 0; c < aiffReader.NumChans; c++ {
+  for c := 0; c < audioReader.GetNumChans(); c++ {
     inputBuffers[c] = NewSlidingBuffer(p.WindowSize)
     outputBuffers[c] = NewSlidingBuffer(p.WindowSize)
     spectrumBuffers[c] = make([]float64, p.Points, p.Points)
@@ -295,10 +295,10 @@ func (p *Pvoc) Run(
 
     lastPhaseIns[c] = make([]float64, halfPoints + 1, halfPoints + 1)
 
-    // TimeStretch needs
+    // TimeStretch needs (for phase locking during overlap add)
     lastPhaseOuts[c] = make([]float64, halfPoints + 1, halfPoints + 1)
 
-    // PitchShift needs
+    // PitchShift needs (for sinusodial summation)
     lastAmps[c] = make([]float64, halfPoints + 1, halfPoints + 1)
     lastFreqs[c] = make([]float64, halfPoints + 1, halfPoints + 1)
     sineIndexes[c] = make([]float64, halfPoints + 1, halfPoints + 1)
@@ -340,7 +340,7 @@ func (p *Pvoc) Run(
     inPointer += p.Decimation
     outPointer += p.Interpolation
 
-    _, samplesRead, err := aiffReader.ReadNext()
+    _, samplesRead, err := audioReader.ReadNext()
     totalSamplesRead += samplesRead
 
     if err != nil {
@@ -350,9 +350,9 @@ func (p *Pvoc) Run(
 
     // for each channel shift into the input buffers the number of samples read
     if samplesRead > 0 {
-      for c := 0; c < aiffReader.NumChans; c++ {
+      for c := 0; c < audioReader.GetNumChans(); c++ {
         // always returns an audio.IntBuffer of decimation length
-        channelBuffer, err := aiffReader.ExtractChannel(c)
+        channelBuffer, err := audioReader.ExtractChannel(c)
 
         if err != nil {
           errors <- err
@@ -370,13 +370,13 @@ func (p *Pvoc) Run(
         }
       }
     } else {
-      // we've hit or passed EOF on aiffReader, slide it over anyway:
-      for c := 0; c < aiffReader.NumChans; c++ {
+      // we've hit or passed EOF on reader, slide it over anyway:
+      for c := 0; c < audioReader.GetNumChans(); c++ {
         inputBuffers[c].ShiftOver(p.Decimation)
       }
     }
 
-    for c := 0; c < aiffReader.NumChans; c++ {
+    for c := 0; c < audioReader.GetNumChans(); c++ {
       // fold the inputBuffers into the spectrum buffers
       WindowFold(
         inputBuffers[c].Data,
@@ -452,10 +452,10 @@ func (p *Pvoc) Run(
     }
 
     if checkTime >= 0 {
-      aiffWriter.ZeroWriteBuffer()
+      audioWriter.ZeroWriteBuffer()
 
-      for c := 0; c < aiffReader.NumChans; c++ {
-        err = aiffWriter.InterleaveChannel(
+      for c := 0; c < audioReader.GetNumChans(); c++ {
+        err = audioWriter.InterleaveChannel(
           c,
           outputBuffers[c].DataInts()[:p.Interpolation],
         )
@@ -468,16 +468,16 @@ func (p *Pvoc) Run(
         }
       }
 
-      // charter.MakeChart("writeBuffer", blockCount, aiffWriter.WriteBuffer.AsFloatBuffer().Data)
+      // charter.MakeChart("writeBuffer", blockCount, audioWriter.WriteBuffer.AsFloatBuffer().Data)
 
-      if err = aiffWriter.WriteNext(); err != nil {
+      if err = audioWriter.WriteNext(); err != nil {
         errors <- err
         return
       }
     }
 
     // shift output buffers over by interpolation
-    for c := 0; c < aiffReader.NumChans; c++ {
+    for c := 0; c < audioReader.GetNumChans(); c++ {
       outputBuffers[c].ShiftOver(p.Interpolation)
     }
 
@@ -488,7 +488,7 @@ func (p *Pvoc) Run(
     }
 
     blockCount++;
-    progress <- int((float64(totalSamplesRead) / float64(aiffReader.NumSampleFrames)) * 100.0)
+    progress <- int((float64(totalSamplesRead) / float64(audioReader.GetNumSampleFrames())) * 100.0)
   }
   done <- true
 }

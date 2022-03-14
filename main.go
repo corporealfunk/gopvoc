@@ -26,8 +26,13 @@ func main() {
     os.Exit(1)
   }
 
-  // setup the aiffReader
-  aiffReader := &audioio.AiffReader{Filepath: parsedArgs.InputPath}
+  // setup the audioReader
+  audioReader, err := audioio.NewAudioReader(parsedArgs.InputPath)
+
+  if err != nil {
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
+  }
 
   // setup the Pvoc processor
   processor, err := pvoc.NewPvoc(
@@ -46,40 +51,47 @@ func main() {
     os.Exit(1)
   }
 
-  if err = aiffReader.Open(processor.Decimation); err != nil {
+  if err = audioReader.Open(processor.Decimation); err != nil {
     fmt.Fprintln(os.Stderr, "Could not open AIFF file:", parsedArgs.InputPath)
     os.Exit(1)
   }
 
-  defer aiffReader.Close()
+  defer audioReader.Close()
 
   if !parsedArgs.Quiet {
     fmt.Print(processor.String())
 
-    fmt.Printf("%24s   %d\n", "Number of Channels:", aiffReader.NumChans)
-    fmt.Printf("%24s   %d\n", "Bit Depth:", aiffReader.BitDepth)
-    fmt.Printf("%24s   %d\n", "Sample Rate:", aiffReader.SampleRate)
-    fmt.Printf("%24s   %.2f\n", "Hz/FFT Band:", float64(aiffReader.SampleRate) / float64(processor.Bands) / 2.0)
-    fmt.Printf("%24s   %.2f s\n", "Input Duration:", aiffReader.Duration)
+    fmt.Printf("%24s   %d\n", "Number of Channels:", audioReader.GetNumChans())
+    fmt.Printf("%24s   %d\n", "Bit Depth:", audioReader.GetBitDepth())
+    fmt.Printf("%24s   %d\n", "Sample Rate:", audioReader.GetSampleRate())
+    fmt.Printf("%24s   %.2f\n", "Hz/FFT Band:", float64(audioReader.GetSampleRate()) / float64(processor.Bands) / 2.0)
+    fmt.Printf("%24s   %.2f s\n", "Input Duration:", audioReader.GetDuration())
 
     if processor.Operation == pvoc.TimeStretch {
-      fmt.Printf("%24s   %.2f s\n", "Output Duration:", aiffReader.Duration * processor.ScaleFactor)
+      fmt.Printf("%24s   %.2f s\n", "Output Duration:", audioReader.GetDuration() * processor.ScaleFactor)
     }
   }
 
-  aiffWriter := &audioio.AiffWriter{
+  audioFile := audioio.AudioFile{
     Filepath: parsedArgs.OutputPath,
-    NumChans: aiffReader.NumChans,
-    SampleRate: aiffReader.SampleRate,
-    BitDepth: aiffReader.BitDepth,
+    NumChans: audioReader.GetNumChans(),
+    SampleRate: audioReader.GetSampleRate(),
+    BitDepth: audioReader.GetBitDepth(),
   }
 
-  if err = aiffWriter.Create(processor.Interpolation); err != nil {
-    fmt.Fprintln(os.Stderr, "Could not open AIFF file for writing:", parsedArgs.OutputPath)
+  audioWriter, err := audioio.NewAudioWriter(audioFile)
+
+  if err != nil {
+    fmt.Fprintln(os.Stderr, "Could not create output audio file:", err)
     os.Exit(1)
   }
 
-  defer aiffWriter.Close()
+  if err = audioWriter.Create(processor.Interpolation); err != nil {
+    fmt.Fprintln(os.Stderr, "Could not open audio file for writing:", parsedArgs.OutputPath)
+    os.Exit(1)
+  }
+
+  defer audioWriter.Close()
 
   // progress will be a number 0-100
   progress := make(chan int)
@@ -101,8 +113,8 @@ func main() {
   )
 
   go processor.Run(
-    aiffReader,
-    aiffWriter,
+    audioReader,
+    audioWriter,
     progress,
     errors,
     done,
