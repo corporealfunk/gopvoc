@@ -16,6 +16,30 @@ Unlike the original SoundHack, this port does not have a UI and must be used on 
 * gopvoc handles output clipping differently than SoundHack. Before writing to disk, gopvoc clips any samples to the max or min allowed value for the given bit depth.
 * gopvoc can analyze up to 8192 FFT bands.
 
+# Example Output
+
+[Original sample used as input for all examples](http://www.jonmoniaci.com/gopvoc/strings_cut.mp3)
+
+## Time Stretching Output Example
+
+[Time stretch x100, overlap factor 0.5 output](http://www.jonmoniaci.com/gopvoc/strings_cut-s100-ohalf.mp3)
+
+`./gopvoc time -i strings_cut.aif -f strings_cut-s100-ohalf.aif -s 100 -o .5`
+
+[Time stretch x100, overlap factor 4 output](http://www.jonmoniaci.com/gopvoc/strings_cut-s100-o4.mp3)
+
+`./gopvoc time -i strings_cut.aif -f strings_cut-s100-o4.aif -s 100 -o 4`
+
+## Pitch Shifting Output Example
+
+[Pitch shift 0.25 (down two octaves), overlap factor .5](http://www.jonmoniaci.com/gopvoc/strings_cut-p2down-ohalf.mp3)
+
+`./gopvoc pitch -i strings_cut.aif -f strings_cut-p2down-ohalf.aif -s .25 -o .5`
+
+[Pitch shift 4 (up two octaves), overlap factor .5](http://www.jonmoniaci.com/gopvoc/strings_cut-p2up-ohalf.mp3)
+
+`./gopvoc pitch -i strings_cut.aif -f strings_cut-p2up-ohalf.aif -s 4 -o .5`
+
 # Commands
 
 gopvoc has two modes of operation, time stretching and pitch shifting. They are invoked like so:
