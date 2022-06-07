@@ -33,7 +33,7 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
     os.Exit(0)
   }
 
-  cmdError := fmt.Errorf("usage: gopvoc [--version] <command> <args>\n\nAvailable Commands:\n\n    time    time stretch input AIFF file\n    pitch   pitch shift input AIFF file\n\nFor specific command options:\n\ngopvoc <command> -h\n\n")
+  cmdError := fmt.Errorf("usage: gopvoc [--version] <command> <args>\n\nAvailable Commands:\n\n    time    time stretch input AIFF/WAV file\n    pitch   pitch shift input AIFF/WAV file\n\nFor specific command options:\n\ngopvoc <command> -h\n\n")
 
   if len(args) < 2 {
     return nil, cmdError
@@ -41,7 +41,7 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
 
   // time stretch flags
   timeCmd := flag.NewFlagSet("time", flag.ExitOnError)
-  timeInput := timeCmd.String("i", "", "input file: path to input AIFF")
+  timeInput := timeCmd.String("i", "", "input file: path to input AIFF/WAV")
   timeScale := timeCmd.Float64("s", 1.0, "scale factor: time scale multiplier")
   timeBands := timeCmd.Int("b", 4096, "bands: number of FFT bands to use during processing. Must be a power of two between 2 to 8192 inclusive")
   timeOverlap := timeCmd.Float64("o", 1.0, "overlap: overlap factor, allowed values: 0.5, 1, 2, 4")
@@ -50,11 +50,11 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
   timeGatingAmplitude := timeCmd.Float64("ga", 0.0, "resynthesis gating amplitude (db): amplitude below 0db under which an FFT frequency is removed from the spectrum.")
   timeGatingThreshold := timeCmd.Float64("gt", 0.0, "resynthesis gating threshold (db) below maximum: any FFT frequency bin with an amplitude this far below the maximum amplitude of all bins in that FFT window will get removed.")
   timeQuiet := timeCmd.Bool("q", false, "quiet flag: suppress informational output")
-  timeOutput := timeCmd.String("f", "", "output file: path to write output AIFF. It will be overwritten if it exists")
+  timeOutput := timeCmd.String("f", "", "output file: path to write output AIFF/WAV. It will be overwritten if it exists")
 
   // pitch flags
   pitchCmd := flag.NewFlagSet("pitch", flag.ExitOnError)
-  pitchInput := pitchCmd.String("i", "", "input file: path to input AIFF")
+  pitchInput := pitchCmd.String("i", "", "input file: path to input AIFF/WAV")
   pitchScale := pitchCmd.Float64("s", 1.0, "scale factor: time scale multiplier")
   pitchBands := pitchCmd.Int("b", 4096, "bands: number of FFT bands to use during processing. Must be a power of two between 2 to 8192 inclusive")
   pitchOverlap := pitchCmd.Float64("o", 1.0, "overlap: overlap factor, allowed values: 0.5, 1, 2, 4")
@@ -62,7 +62,7 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
   pitchGatingAmplitude := pitchCmd.Float64("ga", 0.0, "resynthesis gating amplitude (db): amplitude below 0db under which an FFT frequency is removed from the spectrum.")
   pitchGatingThreshold := pitchCmd.Float64("gt", 0.0, "resynthesis gating threshold (db) below maximum: any FFT frequency bin with an amplitude this far below the maximum amplitude of all bins in that FFT window will get removed.")
   pitchQuiet := pitchCmd.Bool("q", false, "quiet flag: suppress informational output")
-  pitchOutput := pitchCmd.String("f", "", "output file: path to write output AIFF. It will be overwritten if it exists")
+  pitchOutput := pitchCmd.String("f", "", "output file: path to write output AIFF/WAV. It will be overwritten if it exists")
 
   parsedArgs := &Arguments{ }
 
