@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   "os"
+  "path/filepath"
   "gopvoc/audioio"
   "gopvoc/pvoc"
   "gopvoc/cli"
@@ -70,6 +71,7 @@ func main() {
     if processor.Operation == pvoc.TimeStretch {
       fmt.Printf("%24s   %.2f s\n", "Output Duration:", audioReader.GetDuration() * processor.ScaleFactor)
     }
+    fmt.Printf("%24s   %s\n", "Output File:", filepath.Base(parsedArgs.OutputPath))
   }
 
   audioFile := audioio.AudioFile{

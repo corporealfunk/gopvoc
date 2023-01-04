@@ -68,9 +68,10 @@ Input AIFF/WAV file path (required):
 
 `-i <path to input file>`
 
-Output AIFF/WAV file path (required):
+Output AIFF/WAV file path (required). If a full file path is given, output will be written to that path. Output filetype can be a different
+filetype from the input. If a directory is given, the file will be named automatically based on flags passed and will retain the file type:
 
-`-f <path to output file>`
+`-f <path to output file or directory>`
 
 Number of requested bands for FFT processing (must be one of: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192):
 

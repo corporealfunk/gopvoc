@@ -6,6 +6,8 @@ import(
   "os"
   "path/filepath"
   "gopvoc/pvoc"
+  "strings"
+  "math"
 )
 
 type Arguments struct {
@@ -20,6 +22,102 @@ type Arguments struct {
   WindowName string
   GatingAmplitude float64
   GatingThreshold float64
+}
+
+func parseOutputFilePath(outputFile string, parsedArgs *Arguments) (string, error) {
+  fullPath, _ := filepath.Abs(outputFile)
+  pathDir := filepath.Dir(fullPath)
+
+  // does the base directory open
+  _, err := os.Open(pathDir)
+  if err != nil {
+    return "", err
+  }
+
+  // does the full path open
+  file, err := os.Open(fullPath)
+
+  // it doesn't open, just return it
+  if err != nil {
+    return fullPath, nil
+  }
+
+  fileInfo, err := file.Stat()
+
+  // opens but doesn't stat, return
+  if err != nil {
+    return "", err
+  }
+
+  // it opens, if it is not a directory return it
+  if !fileInfo.IsDir() {
+    return fullPath, nil
+  }
+
+  // it is a directory that exists, create a filename
+  fileName := filepath.Base(parsedArgs.InputPath)
+  ext := filepath.Ext(fileName)
+  operation := "t"
+
+  if parsedArgs.Operation == pvoc.PitchShift {
+    operation = "p"
+  }
+
+  overlap := ""
+  if parsedArgs.Overlap != 1.0 {
+    overlap = fmt.Sprintf("-o%g", parsedArgs.Overlap)
+  }
+
+  bands := ""
+
+  if parsedArgs.Bands != 4096 {
+    bands = fmt.Sprintf("-b%d", parsedArgs.Bands)
+  }
+
+  window := ""
+
+  if parsedArgs.WindowName != "hamming" {
+    window = fmt.Sprintf("-%s", parsedArgs.WindowName)
+  }
+
+  gatingA := ""
+
+  if parsedArgs.GatingAmplitude != 0 {
+    gatingA = fmt.Sprintf("-ga%g", math.Abs(parsedArgs.GatingAmplitude))
+  }
+
+  gatingT := ""
+
+  if parsedArgs.GatingAmplitude != 0 {
+    gatingT = fmt.Sprintf("-gt%g", math.Abs(parsedArgs.GatingThreshold))
+  }
+
+  phaseLock := ""
+  if parsedArgs.PhaseLock {
+    phaseLock = "-p"
+  }
+
+  builtName := strings.Replace(
+    fmt.Sprintf(
+      "%s-%ss%g%s%s%s%s%s%s",
+      strings.TrimSuffix(fileName, ext),
+      operation,
+      parsedArgs.Scale,
+      overlap,
+      bands,
+      window,
+      gatingA,
+      gatingT,
+      phaseLock,
+    ),
+    ".",
+    "",
+    -1,
+  )
+
+  builtName = fmt.Sprintf("%s%s", builtName, ext)
+
+  return filepath.Join(fullPath, builtName), nil
 }
 
 func ParseFlags(args []string, version string) (*Arguments, error) {
@@ -50,7 +148,7 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
   timeGatingAmplitude := timeCmd.Float64("ga", 0.0, "resynthesis gating amplitude (db): amplitude below 0db under which an FFT frequency is removed from the spectrum.")
   timeGatingThreshold := timeCmd.Float64("gt", 0.0, "resynthesis gating threshold (db) below maximum: any FFT frequency bin with an amplitude this far below the maximum amplitude of all bins in that FFT window will get removed.")
   timeQuiet := timeCmd.Bool("q", false, "quiet flag: suppress informational output")
-  timeOutput := timeCmd.String("f", "", "output file: path to write output AIFF/WAV. It will be overwritten if it exists")
+  timeOutput := timeCmd.String("f", "", "output file or directory: Provide a path to an AIFF/WAV file. If only a directory is specified, the output file will be automatically named. In both cases, file will be overwritten if it exists.")
 
   // pitch flags
   pitchCmd := flag.NewFlagSet("pitch", flag.ExitOnError)
@@ -62,7 +160,7 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
   pitchGatingAmplitude := pitchCmd.Float64("ga", 0.0, "resynthesis gating amplitude (db): amplitude below 0db under which an FFT frequency is removed from the spectrum.")
   pitchGatingThreshold := pitchCmd.Float64("gt", 0.0, "resynthesis gating threshold (db) below maximum: any FFT frequency bin with an amplitude this far below the maximum amplitude of all bins in that FFT window will get removed.")
   pitchQuiet := pitchCmd.Bool("q", false, "quiet flag: suppress informational output")
-  pitchOutput := pitchCmd.String("f", "", "output file: path to write output AIFF/WAV. It will be overwritten if it exists")
+  pitchOutput := pitchCmd.String("f", "", "output file or directory: Provide a path to an AIFF/WAV file. If only a directory is specified, the output file will be automatically named. In both cases, file will be overwritten if it exists.")
 
   parsedArgs := &Arguments{ }
 
@@ -86,10 +184,14 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
     parsedArgs.Quiet = *timeQuiet
 
     if len(*timeOutput) == 0 {
-      return nil, fmt.Errorf("Required argument missing:\n\n-f <path to output file> is required, for help:\n\ngopvoc time -h\n\n")
+      return nil, fmt.Errorf("Required argument missing:\n\n-f <path to output file or directory> is required, for help:\n\ngopvoc time -h\n\n")
     }
 
-    parsedArgs.OutputPath, _ = filepath.Abs(*timeOutput)
+    parsedFilePath, err := parseOutputFilePath(*timeOutput, parsedArgs)
+    if err != nil {
+      return nil, err
+    }
+    parsedArgs.OutputPath = parsedFilePath
   case "pitch":
     pitchCmd.Parse(os.Args[2:])
     parsedArgs.Operation = pvoc.PitchShift
@@ -111,7 +213,11 @@ func ParseFlags(args []string, version string) (*Arguments, error) {
       return nil, fmt.Errorf("Required argument missing:\n\n-f <path to output file> is required, for help:\n\ngopvoc time -h\n\n")
     }
 
-    parsedArgs.OutputPath, _ = filepath.Abs(*pitchOutput)
+    parsedFilePath, err := parseOutputFilePath(*pitchOutput, parsedArgs)
+    if err != nil {
+      return nil, err
+    }
+    parsedArgs.OutputPath = parsedFilePath
   default:
     return nil, cmdError
   }
