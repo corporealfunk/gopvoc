@@ -88,7 +88,7 @@ func parseOutputFilePath(outputFile string, parsedArgs *Arguments) (string, erro
 
   gatingT := ""
 
-  if parsedArgs.GatingAmplitude != 0 {
+  if parsedArgs.GatingThreshold != 0 {
     gatingT = fmt.Sprintf("-gt%g", math.Abs(parsedArgs.GatingThreshold))
   }
 

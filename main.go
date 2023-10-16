@@ -53,7 +53,7 @@ func main() {
   }
 
   if err = audioReader.Open(processor.Decimation); err != nil {
-    fmt.Fprintln(os.Stderr, "Could not open AIFF file:", parsedArgs.InputPath)
+    fmt.Fprintln(os.Stderr, "Could not open input file:", parsedArgs.InputPath)
     os.Exit(1)
   }
 
